@@ -192,6 +192,18 @@ export class QuickNoteApp extends LitElement {
       margin-left: auto;
     }
 
+    header .spaceMe.selectDatabase {
+      margin: 5px;
+    }
+
+    header .spaceMe.selectDatabase select {
+      padding: 5px;
+      background: transparent;
+      color: white;
+      border: 1px solid white;
+      border-radius: 5px;
+    }
+
     .createNewNote {
       box-shadow: 0px 0px 9px 4px rgb(0 0 0 / 40%);
       border: 1px solid transparent;
@@ -304,10 +316,11 @@ export class QuickNoteApp extends LitElement {
         this._couchDB = await CouchDB.connect("/api") as CouchDB;
 
         if ( this._couchDB === undefined || this._couchDB.username === undefined || this._couchDB.username === "") return;
-
-        await this._couchDB.useDatabase("userdb-" + hexEncode(this._couchDB.username));
         this.loggedIn = true;
-        this.username = this._couchDB.username;
+        this.username = this._couchDB.username;        
+        if ( this._couchDB.currentDatabase === "" ) {
+          await this._couchDB.useDatabase("userdb-" + hexEncode(this._couchDB.username));
+        }
         setTimeout( () => {
           (this.shadowRoot?.querySelector("button.createNewNote") as HTMLButtonElement).focus();
         }, 0);
@@ -337,11 +350,12 @@ export class QuickNoteApp extends LitElement {
         return;
       }
 
+      this.loggedIn = true;
+      this.loginMessage = undefined;
+      this.username = _username;
+
       try {
         await this._couchDB.useDatabase("userdb-" + hexEncode(_username));
-        this.loggedIn = true;
-        this.loginMessage = undefined;
-        this.username = _username;
         this.fetchNotes();
       } catch (error) {
         console.log(error);
@@ -467,17 +481,29 @@ export class QuickNoteApp extends LitElement {
   }
 
 
-  private selectDatabase() {
-    const db = (this.shadowRoot?.querySelector("select#selectDatabase") as HTMLSelectElement).value;
-    this._couchDB?.useDatabase(db);
+  private async selectDatabase(selectId: string) {
+    const db = (this.shadowRoot?.querySelector(`select#${selectId}`) as HTMLSelectElement).value;
+    await this._couchDB?.useDatabase(db);
+    await this.fetchNotes();
+    this.requestUpdate();
   }
 
   render() {
+
+    const dbs = this._couchDB?.getAccessibleDatabases().then( (dbs) => dbs.map( (db: string) => html`
+      <option value="${db}" ?selected=${this._couchDB?.currentDatabase === db}>${db}</option>
+    `) ) ;
+    
     return html`
       <header>
         <div class="logo">${QuickNoteIcon}
         </div>
         <h1 >${this.title}</h1>
+        <div class="spaceMe selectDatabase">
+          <select @change=${() => this.selectDatabase("selectDatabaseInMenuBar")} id="selectDatabaseInMenuBar" style="width: 100%">
+          ${ until(dbs) }
+          </select>
+        </div>
         <button class="spaceMe createNewNote" ?hidden=${!this.loggedIn} @click=${this.createNote}>+</button>
         <button class="spaceMe logout" ?hidden=${!this.loggedIn} @click=${this.logout}>${LogoutIcon}</button>
       </header>
@@ -535,22 +561,15 @@ export class QuickNoteApp extends LitElement {
 
         </div>
       </main>
+
       <!-- SELECT DB DIALOG -->
       <quick-note-dialog id="selectDB" ?open="${this.loggedIn && this._couchDB?.currentDatabase === ""}">
         <h2 slot="heading">Select a database</h2>
         <select id="selectDatabase" style="width: 100%">
-        ${ when( this._couchDB?.currentDatabase === "",
-
-        
-            () => until( this._couchDB?.getDatabases().then( (dbs) => dbs.map( (db: string) => html`
-              <option value="${db}">${db}</option>
-            `) ) )
-          )
-          
-        }
+        ${ when( this._couchDB?.currentDatabase === "", () => until(dbs)) }
         </select>
         <div style="display: flex; justify-content: flex-end; padding: 3px;">
-          <button @click=${this.selectDatabase}>Select</button>
+          <button @click=${() => this.selectDatabase("selectDatabase")}>Select</button>
         </div>
         
       </quick-note-dialog>

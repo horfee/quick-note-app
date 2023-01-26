@@ -22,6 +22,7 @@
 /_site/
 /dist/
 /out-tsc/
+/deployapp/dist
 
 storybook-static
 custom-elements.json

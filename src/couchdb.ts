@@ -1,7 +1,8 @@
 import { stringFixture } from "@open-wc/testing-helpers";
 
-const keyUsername = "fryeiskghfbreidjs";
-const keyAuthSession = "feronfskdlvguidbythiuer";
+//const keyUsername = "fryeiskghfbreidjs";
+//const keyAuthSession = "feronfskdlvguidbythiuer";
+const keyDatabase = "feronfskdlvguidbythiuer";
 
 export class CouchError extends Error {
 
@@ -68,6 +69,17 @@ export class CouchDB {
             if ( username === undefined || username === null ) return undefined;
             couchdb = new CouchDB({server: params, username: username, password: ''});
             couchdb._userRoles = [...(jsonRes.userCtx.roles as Array<string>)];
+            
+            const lastDB = localStorage.getItem(keyDatabase);
+            if ( lastDB && lastDB !== null && lastDB !== "" ) {
+                couchdb._database = lastDB;
+                try {
+                    await couchdb.useDatabase(lastDB);
+                } catch(err) {
+                    couchdb._database = "";
+                }
+            }
+            
             return couchdb;
         } else {
             couchdb = new CouchDB({server: params.server, username: params.username, password: params.password });
@@ -109,8 +121,31 @@ export class CouchDB {
             },
             credentials: 'include'
         });
-        if ( !res || res.status != 200 ) throw new CouchError("Error during fetching databases", res);
+        if ( !res || res.status !== 200 ) throw new CouchError("Error during fetching databases", res);
         return await res.json() as Array<string>;
+    }
+
+    async getAccessibleDatabases(): Promise<Array<string>> {
+        const dbs = await this.getDatabases();
+        const res = [];
+
+        for(const db of dbs) {
+            if ( await this.hasAccessToDatabase(db)) {
+                res.push(db);
+            }
+        }
+        
+        return res;
+    }
+
+    async hasAccessToDatabase(db : string): Promise<boolean> {
+        const res = await fetch(`${this.server}/${db}`, {
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: 'include'
+        });
+        return ( res && res.status === 200);
     }
 
     public get currentDatabase() {
@@ -159,6 +194,7 @@ export class CouchDB {
         if ( !res || res.status != 200 ) throw new CouchError(`Error during use database ${db}`, res);
 
         this._database = db;
+        localStorage.setItem(keyDatabase, db);
         
     }
 
@@ -295,7 +331,11 @@ export class CouchDB {
         const jsonRes = await res.json();
         this._userRoles = [...(jsonRes.roles as Array<string>)];
 
-        localStorage.setItem(keyUsername, atob(this.username));
+        const lastDB = localStorage.getItem(keyDatabase);
+        if ( lastDB && lastDB !== null && lastDB !== "" ) {
+            this._database = lastDB;
+        }
+        //localStorage.setItem(keyUsername, atob(this.username));
         if ( this._database !== "" && this._database !== undefined && this._database !== null ) {
             await this.useDatabase(this._database);
         }
@@ -306,7 +346,8 @@ export class CouchDB {
             method: 'DELETE',
             credentials: 'include'
         });
-        localStorage.removeItem(keyUsername);
+        localStorage.removeItem(keyDatabase);
+        //localStorage.removeItem(keyUsername);
     }
 
     async deleteAttachment(params: {documentId: string, rev: string, fileName: string}) {

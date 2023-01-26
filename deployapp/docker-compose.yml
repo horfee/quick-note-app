@@ -1,0 +1,33 @@
+version: '3'
+services:
+  database:
+    image: couchdb:latest
+    #user: "0:0"
+    container_name: quicknote-couchdb
+    networks:
+      - quicknote-net
+    environment:
+      COUCHDB_USER: quicknote
+      COUCHDB_PASSWORD: quicknote
+      COUCHDB_SECRET: secret
+    ports:
+      - "5984:5984"
+    volumes:
+      - "/Users/horfee/Developpement/quick-note-app/couchdb/data/:/opt/couchdb/data"
+      - "/Users/horfee/Developpement/quick-note-app/couchdb/local.d/:/opt/couchdb/etc/local.d"
+
+  quicknote:
+    build: ./
+    container_name: quicknote
+    ports: 
+     - "80:80"
+    environment:
+      COUCHDB_SERVER: quicknote-couchdb
+    depends_on:
+      - database
+    networks:
+      - quicknote-net
+
+networks:
+  quicknote-net: 
+    driver: bridge

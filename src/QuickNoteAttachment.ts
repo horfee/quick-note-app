@@ -23,7 +23,7 @@ export class QuickNoteAttachment extends LitElement {
 
   static styles = css`
     :host {
-        height: var(--size, 256px);
+        /*height: var(--size, 256px);*/
         width: var(--size, 256px);
         padding: 5px;
     }
@@ -54,6 +54,8 @@ export class QuickNoteAttachment extends LitElement {
 
     h1 {
         word-break: break-word;
+        font-size: medium;
+        
     }
   `;
 

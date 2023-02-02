@@ -359,6 +359,7 @@ export class QuickNoteApp extends LitElement {
         this.fetchNotes();
       } catch (error) {
         console.log(error);
+        this.fetchNotes();
       }
       
     } catch (err ) {

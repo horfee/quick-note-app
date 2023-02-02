@@ -16,7 +16,7 @@ export class CouchError extends Error {
 
 export const DBNotSelected = new CouchError("No database selected.", undefined);
 export const NotConnected = new CouchError("Not connected.", undefined);
-
+export const ConnectionWithoutPasswordError = new CouchError("Unable to reconnect as we don't know the password", undefined);
 
 export interface FindRequest {
     selector: any;                    
@@ -109,11 +109,12 @@ export class CouchDB {
 
     async isConnected(): Promise<boolean> {
         const res = await fetch(`${this.server}/_session`);
-        return res && res.status == 200 && (await res.json()).ok === true;
+        if ( !res || res.status !== 200 ) return false;
+        return (await res.json()).ok === true;
     }
 
     async getDatabases(): Promise<Array<string>> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
 
         const res = await fetch(`${this.server}/_all_dbs`, {
             headers: {
@@ -139,6 +140,8 @@ export class CouchDB {
     }
 
     async hasAccessToDatabase(db : string): Promise<boolean> {
+        if ( !(await this.isConnected())) throw NotConnected;
+
         const res = await fetch(`${this.server}/${db}`, {
         headers: {
             "Content-Type": "application/json"
@@ -153,7 +156,7 @@ export class CouchDB {
     }
 
     async newDatabase(name: string): Promise<boolean> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
 
         const res = await fetch(`${this.server}/${name}`, {
             headers: {
@@ -168,7 +171,7 @@ export class CouchDB {
     }
 
     async deleteDatabase(name: string): Promise<boolean> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
         
         const res = await fetch(`${this.server}/${name}`, {
             headers: {
@@ -182,7 +185,7 @@ export class CouchDB {
     }
 
     async useDatabase(db: string): Promise<void> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
         if ( db === '' ) return;
 
         const res = await fetch(`${this.server}/${db}`, {
@@ -199,7 +202,7 @@ export class CouchDB {
     }
 
     async getAllDocuments(): Promise<Array<any>> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
         if ( this._database === "") throw DBNotSelected;
 
         const res = await fetch(`${this.server}/${this._database}/_all_docs?include_docs=true`, {
@@ -214,7 +217,7 @@ export class CouchDB {
     }
 
     async getDocuments(request:FindRequest): Promise<any> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
         if ( this._database === "") throw DBNotSelected;
         
         const res = await fetch(`${this.server}/${this._database}/_find`, {
@@ -231,7 +234,7 @@ export class CouchDB {
     }
 
     async getDocument(docId: string, rev?: string, attachments=false): Promise<any> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
         if ( this._database === "") throw DBNotSelected;
 
         //const url = new URL(`${this.server}/${this._database}/${docId}`);
@@ -256,7 +259,7 @@ export class CouchDB {
     }
 
     async updateDocument(doc: any): Promise<any> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
         if ( this._database === "") throw DBNotSelected;
 
         return await(await fetch(`${this.server}/${this._database}/${doc._id}?_rev=${doc._rev}`, {
@@ -271,7 +274,7 @@ export class CouchDB {
     }
 
     async deleteDocument(doc: any): Promise<any> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
         if ( this._database === "") throw DBNotSelected;
 
         return await ( await fetch(`${this.server}/${this._database}/${doc._id}?rev=${doc._rev}`, {
@@ -284,7 +287,7 @@ export class CouchDB {
     }
 
     async newDocument(doc: any): Promise<boolean|any> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
         if ( this._database === "") throw DBNotSelected;
 
         if ( doc._id === undefined ) {
@@ -303,7 +306,7 @@ export class CouchDB {
     }
 
     async getUUIDs(count = 1): Promise<number|Array<number>> {
-        if ( !this.isConnected()) throw NotConnected;
+        if ( !(await this.isConnected())) throw NotConnected;
 
         const res =  await (await fetch(`${this.server}/_uuids?count=${count}`,{
             headers: {
@@ -316,7 +319,7 @@ export class CouchDB {
     }
 
     async reconnect(): Promise<void> {
-        if ( this._password === "" ) throw Error("Unable to reconnect as we don't know the password");
+        if ( this._password === "" ) throw ConnectionWithoutPasswordError;
         
         const res = await fetch( `${this.server}/_session`, {
             method: 'POST',

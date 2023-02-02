@@ -80,6 +80,7 @@ export class QuickNoteItem extends LitElement {
 
     .attachments svg {
         height: 100%;
+        width: 32px;
     }
 
     .createdAt {
@@ -205,6 +206,7 @@ export class QuickNoteItem extends LitElement {
 
     quick-note-tag {
         font-size: 10px;
+        margin-right: 2px;
     }
   `;
 
@@ -218,6 +220,10 @@ export class QuickNoteItem extends LitElement {
 
   render() {
     const attachments = [...this.note!._attachments.entries()];
+    const content = document.createElement("div");
+    
+    content.innerHTML = this.note?.content;
+    
     return html`
         <h2 class="title">${this.note?.title}&nbsp;${(this.note?.labels||[]).map( (label) => html`<quick-note-tag .key=${label.key} .value=${label.value}></quick-note-tag>`)}</h2>
         <div class="attachments" ?hidden=${attachments.length == 0}>
@@ -225,7 +231,7 @@ export class QuickNoteItem extends LitElement {
             ${AttachmentIcon}
         </div>
         <p class="createdAt">🕘 ${this.note?.createdAt.toLocaleDateString(navigator.language, dateRenderingOptions)}</p>
-        <p class="content">${this.note?.content}<i class="noContent" ?hidden=${this.note?.content !== undefined && this.note?.content !== ''}>No content</i></p>
+        <p class="content">${content.innerText}<i class="noContent" ?hidden=${this.note?.content !== undefined && this.note?.content !== ''}>No content</i></p>
         <p class="author">${this.note?.author}</p>
         <button class="delete" @click=${this.onDeleteClick}>
             ${DeleteIcon}

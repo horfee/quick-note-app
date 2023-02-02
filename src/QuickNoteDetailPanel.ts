@@ -10,8 +10,9 @@ import { BackList, RefreshIcon, SaveIcon } from '../assets/icons';
 //import sheet from "./assets/tri.css";
 //import "trix";
 //import '@tinymce/tinymce-webcomponent';
-
-
+import './TinyMCEEditor';
+import 'tinymce';
+import { TinyMce } from './TinyMCEEditor';
 
 const saveImage = new URL('../../assets/save.svg', import.meta.url).href;
 const refreshImage = new URL('../../assets/refresh.svg', import.meta.url).href;
@@ -239,8 +240,8 @@ export class QuickNoteDetailPanel extends LitElement {
         this._attachments = new Map<string, Attachment>();
         this.createdAt = new Date();
         this.author = "";
-        // if ( this.editor ) 
-        // (this.editor as any).content = "";
+        // if ( this.richTextEditor ) 
+        //   (this.richTextEditor as any).value = "";
     } else {
         this.noteTitle = note.title;
         this.content = note.content;
@@ -248,8 +249,8 @@ export class QuickNoteDetailPanel extends LitElement {
         this._attachments = new Map<string, Attachment>(note._attachments);
         this.author = note.author;
         this.createdAt = note.createdAt;
-        // if ( this.editor )
-        //     (this.editor as any).content = this.content;
+        // if ( this.richTextEditor )
+        //     (this.richTextEditor as any).value = this.content;
         this.requestUpdate();
         if ( this.inputTitle )
             this.inputTitle.focus(); 
@@ -281,29 +282,27 @@ export class QuickNoteDetailPanel extends LitElement {
   @state()
   private createdAt!: Date;
 
-  private onDataChanged(e: Event) {
-    let inputTarget = e.target as HTMLInputElement;
-    const noteAttribute = inputTarget.getAttribute("data-attribute") || "";
-    (this as any)[noteAttribute] = inputTarget.value;
-    this.checkSaveEnabled();
-  }
 
   @query(".inputTitle")
   private inputTitle!: HTMLInputElement;
 
+  @query("tiny-mce")
+  private tinyMce!: TinyMce;
+
   private handleEscapeKeyboard(e: KeyboardEvent) {
     if ( e.key === 'Escape') {
-        let inputTarget = e.target as HTMLInputElement;
+        let inputTarget = e.target instanceof HTMLInputElement ? e.target as HTMLInputElement : this.tinyMce;
         const noteAttribute = inputTarget.getAttribute("data-attribute") || "";
         inputTarget.value = (this as any)[noteAttribute];
     }
 
   }
 
-  private setValue(e: Event) {
-    let inputTarget = e.target as HTMLInputElement;
+  private onDataChanged(e: Event) {
+    let inputTarget = e.target instanceof HTMLInputElement ? e.target as HTMLInputElement : this.tinyMce;
     const noteAttribute = inputTarget.getAttribute("data-attribute") || "";
-    (this as any)[noteAttribute] = inputTarget.value;// Object.entries(this.note!).filter( (entry) => entry[0] === noteAttribute)[0][1];
+    (this as any)[noteAttribute] = inputTarget.value;
+    this.checkSaveEnabled();
   }
 
   attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
@@ -312,8 +311,6 @@ export class QuickNoteDetailPanel extends LitElement {
             if ( this.inputTitle )
                 this.inputTitle.focus();
         }
-      } else if ( name === 'content' ) {
-        // this.editor.setContent(value||"");
       }
   }
 
@@ -332,6 +329,9 @@ export class QuickNoteDetailPanel extends LitElement {
   @query(".tags .newTag input.value")
   private newTagValue!: HTMLInputElement;
   
+  // @query("tinymce-editor")
+  // private richTextEditor! : any;
+
   private resetLabels() {
     this.labels = this.note.labels;
     this.checkSaveEnabled();
@@ -477,7 +477,7 @@ export class QuickNoteDetailPanel extends LitElement {
     return html`
         <header>
             <button class="returnButton" @click="${() => this.dispatchEvent(new CustomEvent("return"))}">${BackList}</button>
-            <input autofocus class="inputTitle" data-attribute="noteTitle" @keydown=${this.handleEscapeKeyboard} @input=${this.onDataChanged} @change="${this.setValue}" type="text" .value="${this.noteTitle}"/>
+            <input autofocus class="inputTitle" data-attribute="noteTitle" @keydown=${this.handleEscapeKeyboard} @input=${this.onDataChanged} @change=${this.onDataChanged} type="text" .value="${this.noteTitle}"/>
             
             <button class="save" @click=${this.onSave} ?hidden=${!this.saveEnabled}>
                 ${SaveIcon}
@@ -499,21 +499,30 @@ export class QuickNoteDetailPanel extends LitElement {
         </div>
 
         <h2>Content</h2>
-        <!--
+        <tiny-mce 
+          .value="${this.content}" 
+          plugins="advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table code help wordcount" 
+          toolbar="undo redo | formatselect | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | print preview | help"        
+            
+          @keydown=${this.handleEscapeKeyboard} 
+          
+          @change=${this.onDataChanged}
+          @input=${this.onDataChanged} 
+          @blur=${this.onDataChanged}
+          class="content"
+          data-attribute="content"/>
         <tinymce-editor 
             menubar="false"
-            plugins="advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code fullscreen insertdatetime media table paste code help wordcount" 
-            toolbar="undo redo | formatselect | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help"        
-            @keydown=${this.handleEscapeKeyboard} 
-            @change="${this.setValue}" 
-            @input=${this.onDataChanged} 
+            @keydown="${() => console.log("on key down")}"
+            on-blur="this.setValue"
+            @FocusOut="${() => console.log("on focus out")}"
             data-attribute="content" 
-            class="content" 
-            api-key="no-api-key" .content="${this.content}"></tinymce-editor>
+            
+            api-key="3cewlk31y5u5zvlne5wt4wwu00kuf5uolffmmk0wfxievcam" .content="${this.content}"></tinymce-editor>
+        
+
+        <!--<textarea @keydown=${this.handleEscapeKeyboard} @change="${this.onDataChanged}" @input=${this.onDataChanged} data-attribute="content" class="content" .value="${this.content}"></textarea>
         -->
-
-        <textarea @keydown=${this.handleEscapeKeyboard} @change="${this.setValue}" @input=${this.onDataChanged} data-attribute="content" class="content" .value="${this.content}"></textarea>
-
         <h2>Attachments</h2>
         <div class="attachments" @dragenter=${this.highlightDnD} @dragover=${this.highlightDnD} @dragleave=${this.unhighlightDnD} @drop=${this.handleOnDrop}>
             <i ?hidden=${attach.length != 0}>No attachments defined</i>

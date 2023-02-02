@@ -10,9 +10,11 @@ import './QuickNoteDialog';
 import './QuickNoteSearchBar';
 import './QuickNoteDetailPanel';
 import { hexEncode, noteToJSON, objectsToNotes, objectToNote } from './utils';
-import { CouchDB, CouchError } from './couchdb';
+import { ConnectionWithoutPasswordError, CouchDB, CouchError, NotConnected } from './couchdb';
 import { LogoutIcon, QuickNoteIcon } from '../assets/icons';
 import { toHsla } from 'color2k';
+import './SimpleToaster';
+import { SimpleToaster } from './SimpleToaster';
 
 export class QuickNoteApp extends LitElement {
 
@@ -241,6 +243,14 @@ export class QuickNoteApp extends LitElement {
       width: 100%;
       aspect-ratio: 1/1;
     }
+
+    .toasted {
+      box-shadow: 0px 0px 9px 4px rgb(0 0 0 / 40%);
+      padding: 10px;
+      border-radius: 5px;
+      border: 2px solid rgb(0, 153, 0);
+      background: rgb(137 222 137 / 95%);
+    }
   `;
 
   @property( {type: Array}) notes: Note[] = [];
@@ -272,6 +282,8 @@ export class QuickNoteApp extends LitElement {
   @query(".login form")
   loginForm!: HTMLFormElement;
 
+  @query("simple-toaster")
+  toaster!: SimpleToaster;
 
   private noteToDelete: Note|undefined;
 
@@ -303,10 +315,6 @@ export class QuickNoteApp extends LitElement {
       _attachments: new Map()
     };
 
-  }
-
-  private showMenu() {
-    this.menuOpened = true;
   }
 
   async connectedCallback() {
@@ -374,7 +382,25 @@ export class QuickNoteApp extends LitElement {
     return false;
   }
 
-  private handleError(error: CouchError) {
+  private async handleError(error: CouchError) {
+      console.log(error);
+      if ( error === NotConnected ) {
+        try {
+          await this._couchDB?.reconnect();
+        } catch (error: any ) {
+          if ( error === ConnectionWithoutPasswordError ) {
+            this.showToaster(html`You are not connected anymore. You need to provide your credentials again.`);
+            this.loggedIn = false;
+          } else {
+            this.showToaster(error.message);
+            this.loggedIn = false;
+          }
+        }
+      } else {
+        this.showToaster(error.message);
+      }
+      
+
 
   }
 
@@ -402,14 +428,22 @@ export class QuickNoteApp extends LitElement {
 
     // update main document
     if ( note._id === undefined )  {    // create new record
-      res = await this._couchDB?.newDocument(jsonNote);
-      origNote._id = res.id;
-      origNote._rev = res.rev;
-      isNew = true;
+      try {
+        res = await this._couchDB?.newDocument(jsonNote);
+        origNote._id = res.id;
+        origNote._rev = res.rev;
+        isNew = true;
+      } catch ( error) {
+        this.handleError(error as CouchError);
+      }
     } else {                            // update existing record
       if ( !onlyAttachment ) {
-        res = await this._couchDB?.updateDocument(jsonNote);
-        origNote._rev = res?.rev;
+        try {
+          res = await this._couchDB?.updateDocument(jsonNote);
+          origNote._rev = res?.rev;
+        } catch ( error) {
+          this.handleError(error as CouchError);
+        }
       }
       isNew = false;
     }
@@ -418,21 +452,28 @@ export class QuickNoteApp extends LitElement {
     let revertToNote = false;
     for(const attachEntry of [...note._attachments.entries()]) {
       if ( attachEntry[1].length == - 1 ) {
-        const deleteFile = await this._couchDB?.deleteAttachment({documentId: origNote._id!, rev: origNote._rev!, fileName: attachEntry[0]});
-        if ( !deleteFile || deleteFile.ok !== true ) {
-          revertToNote = true;
-          break;
+        try {
+          const deleteFile = await this._couchDB?.deleteAttachment({documentId: origNote._id!, rev: origNote._rev!, fileName: attachEntry[0]});
+          if ( !deleteFile || deleteFile.ok !== true ) {
+            revertToNote = true;
+            break;
+          }
+
+          origNote._rev = deleteFile.rev;
+        } catch ( error) {
+          this.handleError(error as CouchError);
         }
-//        origNote._attachments.delete(attachEntry[0]);
-        origNote._rev = deleteFile.rev;
-        
       } else if ( attachEntry[1].digest === "" ) {
-        const uploadFile = await this._couchDB?.uploadAttachment({documentId: origNote._id!, rev: origNote._rev!, file: attachEntry[1].data});
-        if ( !uploadFile || uploadFile.ok !== true ) {
-          revertToNote = true;
-          break;
+        try {
+          const uploadFile = await this._couchDB?.uploadAttachment({documentId: origNote._id!, rev: origNote._rev!, file: attachEntry[1].data});
+          if ( !uploadFile || uploadFile.ok !== true ) {
+            revertToNote = true;
+            break;
+          }
+          origNote._rev = uploadFile.rev;
+        } catch( error ) {
+          this.handleError(error as CouchError);
         }
-        origNote._rev = uploadFile.rev;
       }
     };
 
@@ -444,8 +485,9 @@ export class QuickNoteApp extends LitElement {
     let n;
     try {
       n = objectToNote(await this._couchDB?.getDocument(origNote._id!, origNote._rev));
-    } catch( error ) {
-      this.showToaster(html`An error happened. Click <a @click=${this.fetchNotes}>here</a> to refresh`);
+    } catch( error: any ) {
+      this.handleError(error);
+      //this.showToaster(html`An error happened. Click <a @click=${this.fetchNotes}>here</a> to refresh`);
       return;
     }
     if ( n === undefined ) return;
@@ -461,8 +503,12 @@ export class QuickNoteApp extends LitElement {
     
   }
 
-  private showToaster(content: any) {
+  @state()
+  _toasterMessage = html``;
 
+  private showToaster(content: any) {
+    this._toasterMessage = content;
+    this.toaster.show = true;
   }
 
   private async downloadAttachment(e: CustomEvent) {
@@ -496,11 +542,17 @@ export class QuickNoteApp extends LitElement {
     `) ) ;
     
     return html`
+
+      <simple-toaster position="top-right">
+        <div class="toasted">
+          ${this._toasterMessage}
+        </div>
+      </simple-toaster>
       <header>
         <div class="logo">${QuickNoteIcon}
         </div>
         <h1 >${this.title}</h1>
-        <div class="spaceMe selectDatabase">
+        <div ?hidden=${!this.loggedIn} class="spaceMe selectDatabase">
           <select @change=${() => this.selectDatabase("selectDatabaseInMenuBar")} id="selectDatabaseInMenuBar" style="width: 100%">
           ${ until(dbs) }
           </select>
@@ -509,7 +561,6 @@ export class QuickNoteApp extends LitElement {
         <button class="spaceMe logout" ?hidden=${!this.loggedIn} @click=${this.logout}>${LogoutIcon}</button>
       </header>
       <main>
-
         <!-- LOGIN DIALOG -->
         <div class="login boxShadow" ?hidden=${this.loggedIn}>
           <h2><i>Welcome in Quick Notes</i></h2>

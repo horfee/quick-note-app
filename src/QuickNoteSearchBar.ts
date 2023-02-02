@@ -170,8 +170,6 @@ export class QuickNoteSearchBar extends LitElement {
       //res.selector.labels = { "$elemMatch": elemMatch};
     }
     
-    console.log(JSON.stringify(res));
-    //( (key) => {[key.toString()]: {}}));
     return res;
 
     return {

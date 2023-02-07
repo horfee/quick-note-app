@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, PropertyValueMap } from 'lit';
 import { until } from 'lit/directives/until.js';
 import {when} from 'lit/directives/when.js';
 import { property, query, state } from 'lit/decorators.js';
@@ -317,8 +317,44 @@ export class QuickNoteApp extends LitElement {
 
   }
 
+   
+  protected updated(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>): void {
+    if (_changedProperties.has("selected") ) {
+      const queryParams = new URL(window.location.toString());
+      const id = this.selected?._id||"";
+      if ( id !== "" && id !== queryParams.searchParams.get("id") ) {
+        queryParams.searchParams.set("id", id);
+        window.history.pushState({}, "", queryParams.toString());
+        
+      } else if (id === "" ) {
+        queryParams.searchParams.delete("id");
+        window.history.pushState({}, "", queryParams.toString());
+      }
+      
+    }
+  }
+  
+  //   super.attributeChangedCallback(name, _old, value);
+  //   if ( name === 'selected' ) {
+  //     
+      
+  //   }
+  // }
+
+  private _selectNoteFromURL(url: URL) {
+    const queryParam = url.searchParams;
+    if ( queryParam.get("id") !== undefined && queryParam.get("id") !== "" ) {
+      this.selected = this.notes.find( (n: Note) => n._id === queryParam.get("id"));
+    }
+    
+  }
+  
   async connectedCallback() {
     super.connectedCallback();
+
+      window.addEventListener("popstate", (ev: PopStateEvent) => {
+        this._selectNoteFromURL(new URL(window.location.toString()));
+      });
 
       try {
         this._couchDB = await CouchDB.connect("/api") as CouchDB;
@@ -332,8 +368,8 @@ export class QuickNoteApp extends LitElement {
         setTimeout( () => {
           (this.shadowRoot?.querySelector("button.createNewNote") as HTMLButtonElement).focus();
         }, 0);
-        this.fetchNotes();
-       
+        await this.fetchNotes();
+        this._selectNoteFromURL(new URL(window.location.toString()));
       } catch (error) {
         const couchError = error as CouchError;
         if ( couchError && couchError.error.status >= 500 ) {
@@ -364,10 +400,12 @@ export class QuickNoteApp extends LitElement {
 
       try {
         await this._couchDB.useDatabase("userdb-" + hexEncode(_username));
-        this.fetchNotes();
+        await this.fetchNotes();
       } catch (error) {
         console.log(error);
-        this.fetchNotes();
+        await this.fetchNotes();
+      } finally {
+        this._selectNoteFromURL(new URL(window.location.toString()));
       }
       
     } catch (err ) {
@@ -414,9 +452,10 @@ export class QuickNoteApp extends LitElement {
       const notes : any = await this._couchDB?.getDocuments(query);
   
       this.notes = objectsToNotes(notes.docs);
-      this.fetchingNotes = false;
     } catch (error) {
       this.handleError(error as CouchError);
+    } finally {
+      this.fetchingNotes = false;
     }
   }
 

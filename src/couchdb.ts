@@ -110,7 +110,8 @@ export class CouchDB {
     async isConnected(): Promise<boolean> {
         const res = await fetch(`${this.server}/_session`);
         if ( !res || res.status !== 200 ) return false;
-        return (await res.json()).ok === true;
+        const jsonRes = await res.json();
+        return jsonRes.ok === true && jsonRes.userCtx && jsonRes.userCtx.name === this.username;
     }
 
     async getDatabases(): Promise<Array<string>> {

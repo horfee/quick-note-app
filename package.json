@@ -3,7 +3,7 @@
   "description": "Webcomponent quick-note-app following open-wc recommendations",
   "license": "MIT",
   "author": "quick-note-app",
-  "version": "0.0.0",
+  "version": "1.3.0",
   "scripts": {
     "lint": "eslint --ext .ts,.html . --ignore-path .gitignore && prettier \"**/*.ts\" --check --ignore-path .gitignore",
     "format": "eslint --ext .ts,.html . --fix --ignore-path .gitignore && prettier \"**/*.ts\" --write --ignore-path .gitignore",
@@ -11,7 +11,10 @@
     "test:watch": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wtr --watch\"",
     "storybook": "tsc && npm run analyze -- --exclude dist && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds -c .storybook/server.mjs\"",
     "storybook:build": "tsc && npm run analyze -- --exclude dist && build-storybook",
-    "build": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce && npm run analyze -- --exclude dist",
+    "build": "npm run build:minor",
+    "build:major": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce && ./updateVersion major && npm run analyze -- --exclude dist",
+    "build:minor": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce && ./updateVersion minor && npm run analyze -- --exclude dist",
+    "build:fix": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce &&  ./updateVersion fix && npm run analyze -- --exclude dist",
     "start:build": "web-dev-server --root-dir dist --app-index index.html --open",
     "analyze": "cem analyze --litelement",
     "start": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds\"",
@@ -83,20 +86,22 @@
       ]
     }
   },
+
   "prettier": {
     "singleQuote": true,
     "arrowParens": "avoid"
   },
+
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged"
     }
   },
+
   "lint-staged": {
     "*.ts": [
       "eslint --fix",
       "prettier --write"
     ]
-  },
-  "customElements": "custom-elements.json"
+  }
 }

@@ -11,10 +11,12 @@
     "test:watch": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wtr --watch\"",
     "storybook": "tsc && npm run analyze -- --exclude dist && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds -c .storybook/server.mjs\"",
     "storybook:build": "tsc && npm run analyze -- --exclude dist && build-storybook",
-    "build": "rimraf dist && tsc && rollup -c rollup.config.js && npm run analyze -- --exclude dist",
+    "build": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce && npm run analyze -- --exclude dist",
     "start:build": "web-dev-server --root-dir dist --app-index index.html --open",
     "analyze": "cem analyze --litelement",
-    "start": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds\""
+    "start": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds\"",
+    "clean_dist_tinymce": "rm -rf dist/node_modules/tinymce",
+    "dist_tinymce": "npm run clean_dist_tinymce && mkdir -p dist/node_modules/tinymce && cp -r node_modules/tinymce/icons dist/node_modules/tinymce && cp -r node_modules/tinymce/models dist/node_modules/tinymce && cp -r node_modules/tinymce/plugins dist/node_modules/tinymce && cp -r node_modules/tinymce/skins dist/node_modules/tinymce && cp -r node_modules/tinymce/themes dist/node_modules/tinymce"
   },
   "dependencies": {
     "@lit-labs/virtualizer": "^1.0.1",

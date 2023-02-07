@@ -14,13 +14,15 @@ export class TinyMce extends LitElement {
   
     private _tinyMce: TinyMCE;
 
+    
     private _editor: Editor | undefined;
-
+    
     private _editorPromise: Promise<Editor>;
-
+    
     public get editor(): Editor | undefined {
         return this._editor;
     }
+
     
     @property() 
     plugins: string;
@@ -44,6 +46,7 @@ export class TinyMce extends LitElement {
                 this._tinyMce.init({
                     toolbar: this.toolbar,
                     plugins: this.plugins,
+                    fullscreen_native: false,
                     readonly: this.readOnly,
                     auto_focus: this.autoFocus ? true: "",
                     base_url: "node_modules/tinymce",

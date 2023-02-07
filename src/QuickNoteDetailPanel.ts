@@ -501,28 +501,17 @@ export class QuickNoteDetailPanel extends LitElement {
         <h2>Content</h2>
         <tiny-mce 
           .value="${this.content}" 
-          plugins="advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table code help wordcount" 
-          toolbar="undo redo | formatselect | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | print preview | help"        
-            
+          plugins="advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table code help wordcount fullscreen" 
+          toolbar="undo redo | formatselect | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | print preview fullscreen | help"
+          
           @keydown=${this.handleEscapeKeyboard} 
           
           @change=${this.onDataChanged}
           @input=${this.onDataChanged} 
           @blur=${this.onDataChanged}
           class="content"
-          data-attribute="content"/>
-        <tinymce-editor 
-            menubar="false"
-            @keydown="${() => console.log("on key down")}"
-            on-blur="this.setValue"
-            @FocusOut="${() => console.log("on focus out")}"
-            data-attribute="content" 
-            
-            api-key="3cewlk31y5u5zvlne5wt4wwu00kuf5uolffmmk0wfxievcam" .content="${this.content}"></tinymce-editor>
-        
-
-        <!--<textarea @keydown=${this.handleEscapeKeyboard} @change="${this.onDataChanged}" @input=${this.onDataChanged} data-attribute="content" class="content" .value="${this.content}"></textarea>
-        -->
+          data-attribute="content">
+        </tiny-mce>
         <h2>Attachments</h2>
         <div class="attachments" @dragenter=${this.highlightDnD} @dragover=${this.highlightDnD} @dragleave=${this.unhighlightDnD} @drop=${this.handleOnDrop}>
             <i ?hidden=${attach.length != 0}>No attachments defined</i>

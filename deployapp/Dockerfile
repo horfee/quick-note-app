@@ -8,3 +8,4 @@ RUN rm /etc/nginx/conf.d/default.conf
 ENV COUCHDB_SCHEME=HTTP
 ENV COUCHDB_HOST=localhost
 ENV COUCHDB_PORT=5984
+ENV MAX_FILE_SIZE=100M;

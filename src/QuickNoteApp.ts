@@ -507,15 +507,15 @@ export class QuickNoteApp extends LitElement {
 
       const sorter = Array.from(this.shadowRoot?.querySelectorAll("div.sort > quick-note-tag")||[]).filter( (t) => (t as QuickNoteTag).value !== "")[0];
       if ( sorter !== undefined ) {
-        let field : string= (sorter as QuickNoteTag).key.toLowerCase().replace(" ", "");
+        let field : string= (sorter as QuickNoteTag).key;
         const asc = (sorter as QuickNoteTag).value === "⬆";
         const desc = (sorter as QuickNoteTag).value === "⬇";
         if ( !asc && !desc ) return;
 
-        field = { "createdat": "createdAt",
-                  "author": "author",
-                  "title": "title",
-                  "encrypted": "encrypted"  
+        field = { [msg('Created At')]: "createdAt",
+                  [msg('Author')]: "author",
+                  [msg('Title')]: "title",
+                  [msg('Encrypted')]: "encrypted"  
                 }[field]||"";
         this.notes = this.notes.sort( (a: Note, b: Note) => {
           return (asc ? 1 : -1 ) * ((a as any)[field] < (b as any)[field] ? -1 : (a as any)[field] > (b as any)[field] ? 1 : 0)

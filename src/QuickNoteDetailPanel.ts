@@ -4,7 +4,7 @@ import { Note, Attachment, Label} from './NoteDefinition';
 import { QuickNoteItem } from './QuickNoteItem';
 import './QuickNotetag';
 import './QuickNoteAttachment';
-import { dateRenderingOptions } from './utils';
+import { dateRenderingOptions, decrypt, encrypt } from './utils';
 import { BackList, RefreshIcon, SaveIcon } from '../assets/icons';
 //import "trix/dist/trix.css";
 //import sheet from "./assets/tri.css";
@@ -13,6 +13,7 @@ import { BackList, RefreshIcon, SaveIcon } from '../assets/icons';
 import './TinyMCEEditor';
 import 'tinymce';
 import { TinyMce } from './TinyMCEEditor';
+import { msg } from '@lit/localize';
 
 const saveImage = new URL('../../assets/save.svg', import.meta.url).href;
 const refreshImage = new URL('../../assets/refresh.svg', import.meta.url).href;
@@ -223,6 +224,11 @@ export class QuickNoteDetailPanel extends LitElement {
         margin-left: 5px;
         padding: 0px;
       }
+
+      .cryptButton {
+        aspect-ratio: unset;
+        align-self: flex-start;
+      }
   `];
 
 
@@ -240,6 +246,7 @@ export class QuickNoteDetailPanel extends LitElement {
         this._attachments = new Map<string, Attachment>();
         this.createdAt = new Date();
         this.author = "";
+        this.encrypted = false;
         // if ( this.richTextEditor ) 
         //   (this.richTextEditor as any).value = "";
     } else {
@@ -249,6 +256,7 @@ export class QuickNoteDetailPanel extends LitElement {
         this._attachments = new Map<string, Attachment>(note._attachments);
         this.author = note.author;
         this.createdAt = note.createdAt;
+        this.encrypted = note.encrypted;
         // if ( this.richTextEditor )
         //     (this.richTextEditor as any).value = this.content;
         this.requestUpdate();
@@ -282,6 +290,9 @@ export class QuickNoteDetailPanel extends LitElement {
   @state()
   private createdAt!: Date;
 
+
+  @state()
+  private encrypted: boolean = false;
 
   @query(".inputTitle")
   private inputTitle!: HTMLInputElement;
@@ -329,6 +340,10 @@ export class QuickNoteDetailPanel extends LitElement {
   @query(".tags .newTag input.value")
   private newTagValue!: HTMLInputElement;
   
+  @property({attribute: "encryptionkey"})
+  encryptionKey: string = "";
+
+  
   // @query("tinymce-editor")
   // private richTextEditor! : any;
 
@@ -353,6 +368,7 @@ export class QuickNoteDetailPanel extends LitElement {
     this.note.author = this.author;
     this.note.content = this.content;
     this.note.labels = this.labels;
+    this.note.encrypted = this.encrypted;
     //this.note._attachments = new Map<string, Attachment>();
     
     // deleted attachments
@@ -469,6 +485,26 @@ export class QuickNoteDetailPanel extends LitElement {
     
   }
 
+  
+  private async toggleEncrypt() {
+    if ( this.encryptionKey === undefined ) {
+      alert("Cannot encrypt/decrypt. Please input encryption key at the top of the application");
+      return;
+    }
+    const password = this.encryptionKey;
+    if ( this.encrypted ) {
+      //const textToDecode = new TextEncoder().encode(this.content);
+      this.content = await decrypt(password, this.content);
+      //const decrypted = await window.crypto.subtle.decrypt({name : "AES-GCM"}, key, textToDecode);
+      //this.content = new TextDecoder().decode(decrypted);
+    } else {
+      this.content = await encrypt(password, this.content);
+      //this.content = CryptoJS.encrypt(this.content, key).toString();
+    }
+    this.encrypted = !this.encrypted;
+    this.checkSaveEnabled();
+  }
+
   render() {
     let attachments = this._attachments;
     if (attachments == undefined) attachments = new Map<string, Attachment>();
@@ -486,11 +522,11 @@ export class QuickNoteDetailPanel extends LitElement {
         <h2>Tags</h2>
         <div class="tags">
         ${this.labels.map( (label, index) => html`<quick-note-tag .key=${label.key} .value=${label.value} deletable @delete="${() => this.deleteLabel(index) }"></quick-note-tag>`)}
-        <i ?hidden=${this.labels.length != 0}>No tags defined</i>
+        <i ?hidden=${this.labels.length != 0}>${msg('No tags defined')}</i>
         <div class="newTag">
-            <span><input type="text" class="key" placeholder="label"></span>
+            <span><input type="text" class="key" placeholder="${msg('label')}"></span>
             <span>:</span>
-            <span><input type="text" class="value" placeholder="value"></span>
+            <span><input type="text" class="value" placeholder="${msg('value')}"></span>
         </div>
         <button class="add tag" @click=${this.addLabel}>+</button>
         <button class="refresh tag" @click=${this.resetLabels}>
@@ -499,6 +535,8 @@ export class QuickNoteDetailPanel extends LitElement {
         </div>
 
         <h2>Content</h2>
+        <button class="cryptButton" ?hidden=${this.encrypted} @click=${this.toggleEncrypt}>${msg('Encrypt content')}</button>
+        <button class="cryptButton" ?hidden=${!this.encrypted} @click=${this.toggleEncrypt}>${msg('Decrypt content')}</button>
         <tiny-mce 
           .value="${this.content}" 
           plugins="advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table code help wordcount fullscreen" 
@@ -512,9 +550,9 @@ export class QuickNoteDetailPanel extends LitElement {
           class="content"
           data-attribute="content">
         </tiny-mce>
-        <h2>Attachments</h2>
+        <h2>${msg('Attachments')}</h2>
         <div class="attachments" @dragenter=${this.highlightDnD} @dragover=${this.highlightDnD} @dragleave=${this.unhighlightDnD} @drop=${this.handleOnDrop}>
-            <i ?hidden=${attach.length != 0}>No attachments defined</i>
+            <i ?hidden=${attach.length != 0}>${msg('No attachments defined')}</i>
             ${attach.map( (key) => html`
                 <quick-note-attachment 
                     .title=${key} 
@@ -527,7 +565,7 @@ export class QuickNoteDetailPanel extends LitElement {
                 ${RefreshIcon}
             </button>
         </div>
-        <i>Created by ${this.author} - ${this.createdAt.toLocaleDateString(navigator.language, dateRenderingOptions)}</i>
+        <i>${msg('Created by')} ${this.author} - ${this.createdAt.toLocaleDateString(navigator.language, dateRenderingOptions)}</i>
     `;
   }
 }

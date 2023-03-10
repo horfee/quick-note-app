@@ -47,6 +47,7 @@ export class TinyMce extends LitElement {
                     toolbar: this.toolbar,
                     plugins: this.plugins,
                     fullscreen_native: false,
+                    language_url: '/assets/tinymce/langs/' + navigator.language,   
                     readonly: this.readOnly,
                     auto_focus: this.autoFocus ? true: "",
                     base_url: "node_modules/tinymce",

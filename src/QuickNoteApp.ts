@@ -15,7 +15,19 @@ import { LogoutIcon, QuickNoteIcon } from '../assets/icons';
 import { toHsla } from 'color2k';
 import './SimpleToaster';
 import { SimpleToaster } from './SimpleToaster';
+import { QuickNoteTag } from './QuickNoteTag';
+import { QuickNoteSearchBar } from './QuickNoteSearchBar';
+import {configureLocalization, localized, msg} from '@lit/localize';
 
+const {setLocale} = configureLocalization({
+  sourceLocale: 'en',
+  targetLocales: ['en', 'fr', 'fr-FR'],
+  loadLocale: (locale) => import(`/out-tsc/src/generated/locales/${locale}.js`),
+});
+
+setLocale(navigator.language);
+
+@localized()
 export class QuickNoteApp extends LitElement {
 
   @property({ type: String }) title = 'Quick notes';
@@ -251,6 +263,31 @@ export class QuickNoteApp extends LitElement {
       border: 2px solid rgb(0, 153, 0);
       background: rgb(137 222 137 / 95%);
     }
+
+    .sort > quick-note-tag {
+      height: 36px;
+    }
+
+    .sort quick-note-tag:last-of-type {
+      margin-right: auto;
+    }
+
+    .sort {
+      display: flex;
+    }
+
+    .sort span {
+      margin-top: auto;
+      margin-bottom: auto;
+      padding: 5px;
+    }
+
+    .fetchingIndicator {
+      position: fixed;
+      top: 0px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
   `;
 
   @property( {type: Array}) notes: Note[] = [];
@@ -278,6 +315,9 @@ export class QuickNoteApp extends LitElement {
 
   @state() 
   private fetchingNotes: boolean = false;
+
+  @state()
+  private encryptionKey: string|undefined;
 
   @query(".login form")
   loginForm!: HTMLFormElement;
@@ -312,6 +352,7 @@ export class QuickNoteApp extends LitElement {
       createdAt: new Date(),
       content: "",
       labels: [],
+      encrypted: false,
       _attachments: new Map()
     };
 
@@ -374,7 +415,7 @@ export class QuickNoteApp extends LitElement {
         const couchError = error as CouchError;
         if ( couchError && couchError.error.status >= 500 ) {
           this.loggedIn = false;
-          this.loginMessage = "Service unavailable. Please contact the administrator";
+          this.loginMessage = msg("Service unavailable. Please contact the administrator");
         }
       }
       
@@ -390,7 +431,7 @@ export class QuickNoteApp extends LitElement {
       this._couchDB = await CouchDB.connect({server: "/api", username: _username, password: _password});
       if ( this._couchDB == undefined ) {
         this.loggedIn = false;
-        this.loginMessage = 'Incorrect credentials';
+        this.loginMessage = msg('Incorrect credentials');
         return;
       }
 
@@ -412,7 +453,7 @@ export class QuickNoteApp extends LitElement {
       const couchError = err as CouchError;
       this.loggedIn = false;
       if ( couchError.error.status == 401) {
-        this.loginMessage = 'Access unauthorized';
+        this.loginMessage = msg('Access unauthorized');
       } else {
         this.loginMessage = couchError.message;
       }
@@ -427,7 +468,7 @@ export class QuickNoteApp extends LitElement {
           await this._couchDB?.reconnect();
         } catch (error: any ) {
           if ( error === ConnectionWithoutPasswordError ) {
-            this.showToaster(html`You are not connected anymore. You need to provide your credentials again.`);
+            this.showToaster(html`${msg('You are not connected anymore. You need to provide your credentials again.')}`);
             this.loggedIn = false;
           } else {
             this.showToaster(error.message);
@@ -448,10 +489,38 @@ export class QuickNoteApp extends LitElement {
       query = { selector:{} };
     }
 
+    // query.sort = [];
+
+    // for(const tag of Array.from(this.shadowRoot?.querySelectorAll("div.sort > quick-note-tag")||[])) {
+    //   const t = tag as QuickNoteTag;
+    //   if ( t.value === "⬆" ) {
+    //     query.sort.push({[t.key.toLowerCase().replace(" ","")]: "asc"});
+    //   } else if ( t.value === "⬇" ) {
+    //     query.sort.push({[t.key.toLowerCase().replace(" ","")]: "desc"});
+    //   }
+    // };
+
     try {
       const notes : any = await this._couchDB?.getDocuments(query);
   
       this.notes = objectsToNotes(notes.docs);
+
+      const sorter = Array.from(this.shadowRoot?.querySelectorAll("div.sort > quick-note-tag")||[]).filter( (t) => (t as QuickNoteTag).value !== "")[0];
+      if ( sorter !== undefined ) {
+        let field : string= (sorter as QuickNoteTag).key.toLowerCase().replace(" ", "");
+        const asc = (sorter as QuickNoteTag).value === "⬆";
+        const desc = (sorter as QuickNoteTag).value === "⬇";
+        if ( !asc && !desc ) return;
+
+        field = { "createdat": "createdAt",
+                  "author": "author",
+                  "title": "title",
+                  "encrypted": "encrypted"  
+                }[field]||"";
+        this.notes = this.notes.sort( (a: Note, b: Note) => {
+          return (asc ? 1 : -1 ) * ((a as any)[field] < (b as any)[field] ? -1 : (a as any)[field] > (b as any)[field] ? 1 : 0)
+        });
+      }
     } catch (error) {
       this.handleError(error as CouchError);
     } finally {
@@ -574,6 +643,24 @@ export class QuickNoteApp extends LitElement {
     this.requestUpdate();
   }
 
+  private _updateEncryptionKey(e: InputEvent) {
+    this.encryptionKey = (e.target as HTMLInputElement).value;
+  }
+
+
+  private _sortOn(e: Event) {
+    const target = e.target as QuickNoteTag;
+    if ( target.value === "" ) target.value = "⬇";
+    else if ( target.value === "⬇" ) target.value = "⬆";
+    else if ( target.value === "⬆" ) target.value = "";
+    this.shadowRoot?.querySelectorAll("div.sort quick-note-tag").forEach( (t) => {
+      if ( t != target ) (t as QuickNoteTag).value = "";
+    });
+    (this.shadowRoot?.querySelector("quick-note-search-bar") as QuickNoteSearchBar).doSearch();
+
+
+  }
+
   render() {
 
     const dbs = this._couchDB?.getAccessibleDatabases().then( (dbs) => dbs.map( (db: string) => html`
@@ -591,6 +678,7 @@ export class QuickNoteApp extends LitElement {
         <div class="logo">${QuickNoteIcon}
         </div>
         <h1 >${this.title}</h1>
+        <input ?hidden=${!this.loggedIn} type="password" id="encryptionKey" placeholder="${msg('encryption key')}" @change=${this._updateEncryptionKey} class="spaceMe"/>
         <div ?hidden=${!this.loggedIn} class="spaceMe selectDatabase">
           <select @change=${() => this.selectDatabase("selectDatabaseInMenuBar")} id="selectDatabaseInMenuBar" style="width: 100%">
           ${ until(dbs) }
@@ -602,11 +690,11 @@ export class QuickNoteApp extends LitElement {
       <main>
         <!-- LOGIN DIALOG -->
         <div class="login boxShadow" ?hidden=${this.loggedIn}>
-          <h2><i>Welcome in Quick Notes</i></h2>
+          <h2><i>${msg('Welcome in Quick Notes')}</i></h2>
           <form @submit=${this.login} >
-            <input type="text" placeholder="Username" name="username" id="username"/>
-            <input type="password" placeholder="Password" name="password" id="password"/>
-            <input type="submit" value="Login"/>
+            <input type="text" placeholder="${msg('Username')}" name="username" id="username"/>
+            <input type="password" placeholder="${msg('Password')}" name="password" id="password"/>
+            <input type="submit" value="${msg("Login")}"/>
             <div ?hidden=${this.loginMessage === undefined} class="loginMessage">${this.loginMessage}</div>
           </form>
         </div>
@@ -620,13 +708,21 @@ export class QuickNoteApp extends LitElement {
             @return="${ () => this.selected = undefined}"
             @save="${ (e: CustomEvent) => this._saveNote(e.detail.note, e.detail.onlyAttachment)}"
             @download="${ this.downloadAttachment}"
+            .encryptionKey=${this.encryptionKey}
         ></quick-note-detail>
         <!-- END OF DETAIL OF A NOTE -->
 
         <!-- LIST OF NOTES -->
         <div ?hidden=${this.selected !== undefined || !this.loggedIn} id="list">
           <quick-note-search-bar @search="${(e: CustomEvent) => this.fetchNotes(e.detail)}"></quick-note-search-bar>
-          <div ?hidden=${!this.fetchingNotes}>Fetching notes</div>
+          <div class="sort">
+            <div ?hidden=${!this.fetchingNotes} class="fetchingIndicator">${msg('Fetching notes')}</div>
+            <span>${msg('Sort:')} </span>
+            <quick-note-tag id="sortOnCreatedAt" @click="${this._sortOn}" key="${msg('Created At')}" value=""></quick-note-tag>
+            <quick-note-tag id="sortOnCreatedAt" @click="${this._sortOn}" key="${msg('Title')}" value=""></quick-note-tag>
+            <quick-note-tag id="sortOnCreatedAt" @click="${this._sortOn}" key="${msg('Author')}" value=""></quick-note-tag>
+            <quick-note-tag id="sortOnCreatedAt" @click="${this._sortOn}" key="${msg('Encrypted')}" value=""></quick-note-tag>
+          </div>
           <lit-virtualizer ?hidden=${this.fetchingNotes} id="list"
             scroller
             .items=${this.notes}
@@ -638,15 +734,6 @@ export class QuickNoteApp extends LitElement {
                 >
                 </quick-note-item>`}
           </lit-virtualizer>
-          <!--
-          ${this.notes.map( (note: Note) => html`
-                  <quick-note-item 
-                  .note=${note} 
-                  @click=${ () => this.selected = note }
-                  @delete=${ (e: CustomEvent) => this.askForDeleteNote(note)}
-            >
-            </quick-note-item/>
-          `)}-->
           <!-- END OF LIST OF NOTES -->
 
 
@@ -655,23 +742,23 @@ export class QuickNoteApp extends LitElement {
 
       <!-- SELECT DB DIALOG -->
       <quick-note-dialog id="selectDB" ?open="${this.loggedIn && this._couchDB?.currentDatabase === ""}">
-        <h2 slot="heading">Select a database</h2>
+        <h2 slot="heading">${msg('Select a database')}</h2>
         <select id="selectDatabase" style="width: 100%">
         ${ when( this._couchDB?.currentDatabase === "", () => until(dbs)) }
         </select>
         <div style="display: flex; justify-content: flex-end; padding: 3px;">
-          <button @click=${() => this.selectDatabase("selectDatabase")}>Select</button>
+          <button @click=${() => this.selectDatabase("selectDatabase")}>${msg('Select')}</button>
         </div>
         
       </quick-note-dialog>
       <!-- SELECT DB DIALOG -->
 
       <quick-note-dialog backdrop id="confirmDeleteDialog">
-        <h2 slot="heading">Confirm deletion</h2>
-        <p>Do you really want to delete note <i><u>${this.selected?.title}</u></i> ?</p>
+        <h2 slot="heading">${msg('Confirm deletion')}</h2>
+        <p>${msg('Do you really want to delete note <i><u>${this.selected?.title}</u></i> ?')}</p>
         <div style="display: flex; justify-content: flex-end; padding: 3px;">
-          <button style="margin-right: 2px;" @click=${() => { this.confirmDeleteDialog?.close(); this._deleteNote()}}>Yes</button>
-          <button style="margin-left: 2px;" @click=${() => this.confirmDeleteDialog?.close()}>No</button>
+          <button style="margin-right: 2px;" @click=${() => { this.confirmDeleteDialog?.close(); this._deleteNote()}}>${msg('Yes')}</button>
+          <button style="margin-left: 2px;" @click=${() => this.confirmDeleteDialog?.close()}>${msg('No')}</button>
         </div>
       </quick-note-dialog>
       <footer>

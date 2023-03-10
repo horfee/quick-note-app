@@ -19,6 +19,7 @@ export interface Note extends Object {
     title: string;
     author: string;
     createdAt: Date;
+    encrypted: boolean;
     content: any;
 
     labels: Array<Label>;

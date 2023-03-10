@@ -3,7 +3,7 @@
   "description": "Webcomponent quick-note-app following open-wc recommendations",
   "license": "MIT",
   "author": "quick-note-app",
-  "version": "1.3.0",
+  "version": "2.4.0",
   "scripts": {
     "lint": "eslint --ext .ts,.html . --ignore-path .gitignore && prettier \"**/*.ts\" --check --ignore-path .gitignore",
     "format": "eslint --ext .ts,.html . --fix --ignore-path .gitignore && prettier \"**/*.ts\" --write --ignore-path .gitignore",
@@ -11,20 +11,25 @@
     "test:watch": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wtr --watch\"",
     "storybook": "tsc && npm run analyze -- --exclude dist && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds -c .storybook/server.mjs\"",
     "storybook:build": "tsc && npm run analyze -- --exclude dist && build-storybook",
-    "build": "npm run build:minor",
-    "build:major": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce && ./updateVersion major && npm run analyze -- --exclude dist",
-    "build:minor": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce && ./updateVersion minor && npm run analyze -- --exclude dist",
-    "build:fix": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce &&  ./updateVersion fix && npm run analyze -- --exclude dist",
+    "build:current": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce",
+    "build:major": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce && ./updateVersion.sh major",
+    "build:minor": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce && ./updateVersion.sh minor",
+    "build:fix": "rimraf dist && tsc && rollup -c rollup.config.js && npm run dist_tinymce && ./updateVersion.sh fix",
     "start:build": "web-dev-server --root-dir dist --app-index index.html --open",
     "analyze": "cem analyze --litelement",
     "start": "tsc && concurrently -k -r \"tsc --watch --preserveWatchOutput\" \"wds\"",
     "clean_dist_tinymce": "rm -rf dist/node_modules/tinymce",
-    "dist_tinymce": "npm run clean_dist_tinymce && mkdir -p dist/node_modules/tinymce && cp -r node_modules/tinymce/icons dist/node_modules/tinymce && cp -r node_modules/tinymce/models dist/node_modules/tinymce && cp -r node_modules/tinymce/plugins dist/node_modules/tinymce && cp -r node_modules/tinymce/skins dist/node_modules/tinymce && cp -r node_modules/tinymce/themes dist/node_modules/tinymce"
+    "dist_tinymce": "npm run clean_dist_tinymce && mkdir -p dist/node_modules/tinymce && cp -r node_modules/tinymce/icons dist/node_modules/tinymce && cp -r node_modules/tinymce/models dist/node_modules/tinymce && cp -r node_modules/tinymce/plugins dist/node_modules/tinymce && cp -r node_modules/tinymce/skins dist/node_modules/tinymce && cp -r node_modules/tinymce/themes dist/node_modules/tinymce",
+    "build:current:docker": "npm run build:current && npm run dist_tinymce && cd deployapp && ./buildImages.sh"
   },
   "dependencies": {
     "@lit-labs/virtualizer": "^1.0.1",
+    "@lit/localize": "^0.11.4",
     "@tinymce/tinymce-webcomponent": "^2.0.1",
+    "aes": "^0.1.0",
     "color2k": "^2.0.0",
+    "crypto-js": "^4.1.1",
+    "js-crypto-aes": "^1.0.4",
     "lit": "^2.0.2",
     "tinymce": "^6.3.1"
   },
@@ -32,12 +37,14 @@
     "@babel/preset-env": "^7.16.4",
     "@custom-elements-manifest/analyzer": "^0.4.17",
     "@koa/cors": "^4.0.0",
+    "@lit/localize-tools": "^0.6.7",
     "@open-wc/building-rollup": "^2.0.2",
     "@open-wc/eslint-config": "^8.0.2",
     "@open-wc/testing": "^3.1.6",
     "@rollup/plugin-babel": "^5.3.0",
     "@rollup/plugin-node-resolve": "^13.0.6",
     "@types/chroma-js": "^2.1.4",
+    "@types/crypto-js": "^4.1.1",
     "@types/tinymce": "^4.6.5",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
@@ -86,18 +93,15 @@
       ]
     }
   },
-
   "prettier": {
     "singleQuote": true,
     "arrowParens": "avoid"
   },
-
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged"
     }
   },
-
   "lint-staged": {
     "*.ts": [
       "eslint --fix",

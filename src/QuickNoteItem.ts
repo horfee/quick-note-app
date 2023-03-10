@@ -1,3 +1,4 @@
+import { msg } from '@lit/localize';
 import { LitElement, html, css } from 'lit';
 import { property } from 'lit/decorators.js';
 import { AttachmentIcon, DeleteIcon } from '../assets/icons';
@@ -231,7 +232,7 @@ export class QuickNoteItem extends LitElement {
             ${AttachmentIcon}
         </div>
         <p class="createdAt">🕘 ${this.note?.createdAt.toLocaleDateString(navigator.language, dateRenderingOptions)}</p>
-        <p class="content">${content.innerText}<i class="noContent" ?hidden=${this.note?.content !== undefined && this.note?.content !== ''}>No content</i></p>
+        <p class="content">${content.innerText}<i class="noContent" ?hidden=${this.note?.content !== undefined && this.note?.content !== ''}>${msg('No content')}</i></p>
         <p class="author">${this.note?.author}</p>
         <button class="delete" @click=${this.onDeleteClick}>
             ${DeleteIcon}

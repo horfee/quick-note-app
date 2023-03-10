@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file target-language="en" source-language="en" original="lit-localize-inputs" datatype="plaintext">
+    <body>
+      <trans-unit id="s826fe076803d85cc">
+        <source>Service unavailable. Please contact the administrator</source>
+        <target>Service unavailable. Please contact the administrator</target>
+      </trans-unit>
+      <trans-unit id="s8a335c1a76789c52">
+        <source>Incorrect credentials</source>
+        <target>Incorrect credentials</target>
+      </trans-unit>
+      <trans-unit id="se02de95d10bfa5d7">
+        <source>Access unauthorized</source>
+        <target>Access unauthorized</target>
+      </trans-unit>
+      <trans-unit id="s1f9e4da5eba1983d">
+        <source>You are not connected anymore. You need to provide your credentials again.</source>
+        <target>You are not connected anymore. You need to provide your credentials again.</target>
+      </trans-unit>
+      <trans-unit id="s6f61c4bd6606c9f0">
+        <source>Welcome in Quick Notes</source>
+        <target>Welcome in Quick Notes</target>
+      </trans-unit>
+      <trans-unit id="s03f42eea72154959">
+        <source>Username</source>
+        <target>Username</target>
+      </trans-unit>
+      <trans-unit id="sf6e1665c7022a1f8">
+        <source>Password</source>
+        <target>Password</target>
+      </trans-unit>
+      <trans-unit id="s55c2ac22116280e4">
+        <source>Fetching notes</source>
+        <target>Fetching notes</target>
+      </trans-unit>
+      <trans-unit id="s4a772fa67280a0dc">
+        <source>Created At</source>
+        <target>Created At</target>
+      </trans-unit>
+      <trans-unit id="s99f110d27e30b289">
+        <source>Title</source>
+        <target>Title</target>
+      </trans-unit>
+      <trans-unit id="s01d32b35baa3b676">
+        <source>Author</source>
+        <target>Author</target>
+      </trans-unit>
+      <trans-unit id="s718066bde034b8b3">
+        <source>Encrypted</source>
+        <target>Encrypted</target>
+      </trans-unit>
+      <trans-unit id="sc0f84caf76eef64b">
+        <source>Select a database</source>
+        <target>Select a database</target>
+      </trans-unit>
+      <trans-unit id="sfc63e31ac7c956ed">
+        <source>Select</source>
+        <target>Select</target>
+      </trans-unit>
+      <trans-unit id="sc681b137e8f604f7">
+        <source>Confirm deletion</source>
+        <target>Confirm deletion</target>
+      </trans-unit>
+      <trans-unit id="sc57d2c41b322e943">
+        <source>Do you really want to delete note &lt;i&gt;&lt;u&gt;${this.selected?.title}&lt;/u&gt;&lt;/i&gt; ?</source>
+        <target>Do you really want to delete note &lt;i&gt;&lt;u&gt;${this.selected?.title}&lt;/u&gt;&lt;/i&gt; ?</target>
+      </trans-unit>
+      <trans-unit id="scb489a1a173ac3f0">
+        <source>Yes</source>
+        <target>Yes</target>
+      </trans-unit>
+      <trans-unit id="s09205907b5b56cda">
+        <source>No</source>
+        <target>No</target>
+      </trans-unit>
+      <trans-unit id="sc8da3cc71de63832">
+        <source>Login</source>
+        <target>Login</target>
+      </trans-unit>
+      <trans-unit id="s220bcce27242e1e9">
+        <source>search</source>
+        <target>search</target>
+      </trans-unit>
+      <trans-unit id="sb4f1dffbb6be6302">
+        <source>Clear</source>
+        <target>Clear</target>
+      </trans-unit>
+      <trans-unit id="s5d929ff1619ac0c9">
+        <source>Search</source>
+        <target>Search</target>
+      </trans-unit>
+      <trans-unit id="sb6e7fee4fd213bd3">
+        <source>encryption key</source>
+        <target>encryption key</target>
+      </trans-unit>
+      <trans-unit id="s3f4573c71894b5f1">
+        <source>Sort:</source>
+        <target>Sort:</target>
+      </trans-unit>
+      <trans-unit id="sadf1a44da5dc17af">
+        <source>No content</source>
+        <target>No content</target>
+      </trans-unit>
+      <trans-unit id="s16fab502fb3f23c2">
+        <source>No tags defined</source>
+        <target>No tags defined</target>
+      </trans-unit>
+      <trans-unit id="s39f7fcec8fcb623d">
+        <source>label</source>
+        <target>label</target>
+      </trans-unit>
+      <trans-unit id="s7ce4fd9430e80cea">
+        <source>value</source>
+        <target>value</target>
+      </trans-unit>
+      <trans-unit id="sd07c816374a74e07">
+        <source>Encrypt content</source>
+        <target>Encrypt content</target>
+      </trans-unit>
+      <trans-unit id="s3648eb8f3965778f">
+        <source>Decrypt content</source>
+        <target>Decrypt content</target>
+      </trans-unit>
+      <trans-unit id="s592e7303020349a1">
+        <source>Attachments</source>
+        <target>Attachments</target>
+      </trans-unit>
+      <trans-unit id="s13ad2ee556c9dfe5">
+        <source>No attachments defined</source>
+        <target>No attachments defined</target>
+      </trans-unit>
+<trans-unit id="s4aee34a672e5cfc0">
+  <source>Created by</source>
+  <target>Created by</target>
+</trans-unit>
+    </body>
+  </file>
+</xliff>

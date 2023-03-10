@@ -1,5 +1,3 @@
-import { notEqual } from "lit";
-import { __values } from "tslib";
 import { Attachment, Label, Note } from "./NoteDefinition";
 
 export const dateRenderingOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute:'numeric' };
@@ -30,6 +28,7 @@ export function noteToJSON(note: Note) {
         title: note.title,
         author: note.author,
         content: note.content,
+        encrypted: note.encrypted,
         createdAt: note.createdAt.getTime(),
         _attachments: note._attachments,
         labels: note.labels
@@ -60,6 +59,7 @@ export function objectToNote(o: any): Note|undefined {
         title: o.title,
         author: o.author,
         content: o.content,
+        encrypted: o.encrypted || false,
         createdAt: new Date(o.createdAt),
         _attachments: new Map<string, Attachment>(Object.entries(attachments)),
         labels: [...labels]
@@ -150,3 +150,102 @@ export function getIconFromMIME(mimeType: string) {
     }
   }
   
+
+  const getPasswordKey = async (password: string) => {
+    const enc = new TextEncoder();
+    return await window.crypto.subtle.importKey(
+      "raw",
+      enc.encode(password),
+      "PBKDF2",
+      false,
+      ["deriveKey"]
+    );
+  }
+
+  const deriveKey = async (passwordKey: CryptoKey, salt: Uint8Array, keyUsage: KeyUsage[]) =>
+    await window.crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: salt,
+        iterations: 250000,
+        hash: "SHA-256",
+      },
+      passwordKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      keyUsage
+    );
+
+
+  const buff_to_base64 = (buff:any) => btoa(String.fromCharCode.apply(null, buff));
+  const base64_to_buf = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+
+  export async function encrypt(password: string, data: string) {
+
+
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const passwordKey = await getPasswordKey(password);
+    const aesKey = await deriveKey(passwordKey, salt, ["encrypt"]);
+    
+    const textToEncode = new TextEncoder().encode(data);
+      const encoded = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv}, aesKey, textToEncode);
+      const encryptedContentArr = new Uint8Array(encoded);
+      let buff = new Uint8Array(
+        salt.byteLength + iv.byteLength + encoded.byteLength
+      );
+      buff.set(salt, 0);
+      buff.set(iv, salt.byteLength);
+      buff.set(encryptedContentArr, salt.byteLength + iv.byteLength);
+      return buff_to_base64(buff);
+  }
+
+export async function decrypt( password: string, encryptedData: string ): Promise<string> {
+  
+  try {
+    const encryptedDataBuff = base64_to_buf(encryptedData);
+    const salt = encryptedDataBuff.slice(0, 16);
+    const iv = encryptedDataBuff.slice(16, 16 + 12);
+    const data = encryptedDataBuff.slice(16 + 12);
+    const passwordKey = await getPasswordKey(password);
+    const aesKey = await deriveKey(passwordKey, salt, ["decrypt"]);
+    const decryptedContent = await window.crypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: iv,
+      },
+      aesKey,
+      data
+    );
+    return new TextDecoder().decode(decryptedContent);
+  } catch (e) {
+    console.log(`Error - ${e}`);
+    return "";
+  }
+}
+
+export function stringToDateUsingLocale(date: string) {
+  const df = new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short"});
+  const parts = df.formatToParts();
+  let day = 0, month = 0, year = 0, hours = 0, minutes = 0, seconds = 0;
+
+  for(const p of parts) {
+    if ( p.type === 'day' ) day = parseInt(date);
+    if ( p.type === 'month' ) month = parseInt(date) - 1;
+    if ( p.type === 'year' ) year = parseInt(date);
+    if ( p.type === 'hour' ) hours = parseInt(date);
+    if ( p.type === 'minute' ) minutes = parseInt(date);
+    if ( p.type === 'second' ) seconds = parseInt(date);
+    if ( p.type === 'literal' ) {
+      date = date.substring(p.value.length);
+      continue;
+    }
+
+    let i = 0;
+    while ( i < date.length && "0123456789".indexOf(date.charAt(i)) != -1) i++;
+    date = date.substring(i);
+    if ( date === "" ) break;
+  }
+  return new Date(year, month, day, hours, minutes, seconds);
+
+}
